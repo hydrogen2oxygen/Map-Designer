@@ -10,7 +10,7 @@ public class StartWireMockStandalone {
 
       // Just to test the REST interface between a Server and the map-designer library
 
-      WireMockServer wireMockServer = new WireMockServer(options().port(80).withRootDirectory("src/test/resources/wiremock"));
+      WireMockServer wireMockServer = new WireMockServer(options().port(80).withRootDirectory("src"));
       wireMockServer.start();
    }
 
