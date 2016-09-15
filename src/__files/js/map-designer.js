@@ -16,16 +16,15 @@ mapDesigner.initEvents = function() {
 
 mapDesigner.initToolbar = function() {
 
-	mapDesigner.addButtonToToolbar('loadMapsButton', 'Load Maps', 'primary','import', function() {
-		$.getJSON("testdata/data.json", function(data) {
+	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
 
-			$.each( data.data, function( key, territory ) {
-				mapDesigner.addTerritory(territory);
-			});
-		});
+
 	});
 };
 
+/**
+ * Add a button in a bootstrap style with custom click event function
+ */
 mapDesigner.addButtonToToolbar = function(id,title,buttonClass,glyphicon,clickEvent) {
 
 	var button = '<button id="ID" title="TITLE" class="btn btn-lg btn-toolbar btn-BUTTONCLASS"><span class="glyphicon glyphicon-GLYPHICON" aria-hidden="true"></span></button>';
@@ -43,6 +42,34 @@ mapDesigner.DYNAMIC_SIDEPANEL_FULLSCREEN_HTML = 'mapSidePanelFullscreenMode.html
 mapDesigner.DYNAMIC_SIDEPANEL_COMPACT_HTML = 'mapSidePanelCompactMode.html';
 
 /**
+ * Load all territories
+ */
+mapDesigner.loadAllTerritories = function() {
+	$.getJSON("testdata/data.json", function(data) {
+
+		$.each( data.data, function( key, territory ) {
+			mapDesigner.addTerritory(territory);
+		});
+	});
+};
+
+mapDesigner.initModifyInteraction = function() {
+
+	var modify = new ol.interaction.Modify({
+        features: mapDesigner.features,
+        // the SHIFT key must be pressed to delete vertices, so
+        // that new vertices can be drawn at the same position
+        // of existing vertices
+        deleteCondition: function(event) {
+          return ol.events.condition.shiftKeyOnly(event) &&
+              ol.events.condition.singleClick(event);
+        }
+      });
+
+      mapDesigner.map.addInteraction(modify);
+};
+
+/**
  * Init the openlayer map ... and note how easy openlayers can be if you write it well!
  */
 mapDesigner.initMap = function() {
@@ -55,7 +82,8 @@ mapDesigner.initMap = function() {
 	mapDesigner.fullScreenControl = new ol.control.FullScreen({	source : 'fullscreen' });
 
 	// Territory Layer
-	mapDesigner.sourceTerritory = new ol.source.Vector({});
+	mapDesigner.features = new ol.Collection();
+	mapDesigner.sourceTerritory = new ol.source.Vector({ features: mapDesigner.features });
 	mapDesigner.layerTerritory = new ol.layer.Vector({ source: mapDesigner.sourceTerritory });
 	mapDesigner.formatWKT = new ol.format.WKT();
 
@@ -82,9 +110,16 @@ mapDesigner.addTerritory = function(territory) {
 		console.log(territory.number + ' has no polygon');
 		return;
 	}
+
 	// no projection transformation is needed here, because the we store it in
 	// the same as openlayers provides
 	var feature = mapDesigner.formatWKT.readFeature(territory.polygon);
+
+	// add additional information
+	feature.number = territory.number;
+	feature.city = territory.city;
+	feature.contacts = territory.contacts;
+
 	mapDesigner.sourceTerritory.addFeature( feature );
 };
 
@@ -94,6 +129,8 @@ mapDesigner.init = function() {
 	mapDesigner.initWindowsResize();
 	mapDesigner.initEvents();
 	mapDesigner.initCustomEvents();
+	mapDesigner.loadAllTerritories();
+	mapDesigner.initModifyInteraction();
 };
 
 mapDesigner.initWindowsResize = function() {
