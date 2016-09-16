@@ -18,7 +18,9 @@ mapDesigner.initToolbar = function() {
 
 	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
 
-		mapDesigner.modifyInteraction.setActive(mapDesigner.toggleButton('drawTerritoryButton'));
+	    var activateInteractions = mapDesigner.toggleButton('drawTerritoryButton');
+		mapDesigner.modifyInteraction.setActive(activateInteractions);
+		mapDesigner.drawInteraction.setActive(activateInteractions);
 	});
 };
 
@@ -87,6 +89,17 @@ mapDesigner.initModifyInteraction = function() {
       mapDesigner.modifyInteraction.setActive(false);
 };
 
+mapDesigner.initDrawInteraction = function() {
+
+    mapDesigner.drawInteraction = new ol.interaction.Draw({
+        features: mapDesigner.features,
+        type: 'Polygon'
+      });
+
+      mapDesigner.map.addInteraction(mapDesigner.drawInteraction);
+      mapDesigner.drawInteraction.setActive(false);
+};
+
 /**
  * Init the openlayer map ... and note how easy openlayers can be if you write it well!
  */
@@ -149,6 +162,7 @@ mapDesigner.init = function() {
 	mapDesigner.initCustomEvents();
 	mapDesigner.loadAllTerritories();
 	mapDesigner.initModifyInteraction();
+	mapDesigner.initDrawInteraction();
 };
 
 mapDesigner.initWindowsResize = function() {
