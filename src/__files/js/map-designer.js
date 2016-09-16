@@ -18,8 +18,25 @@ mapDesigner.initToolbar = function() {
 
 	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
 
-
+		mapDesigner.modifyInteraction.setActive(mapDesigner.toggleButton('drawTerritoryButton'));
 	});
+};
+
+/**
+ * Toggles a button. It returns it's state as boolean
+ */
+mapDesigner.toggleButton = function(id) {
+
+	if ($('#' + id).attr('class').indexOf('btn-primary') > -1) {
+
+		$('#' + id).removeClass('btn-primary');
+	    $('#' + id).addClass('btn-success');
+	    return true;
+	}
+
+	$('#' + id).removeClass('btn-success');
+	$('#' + id).addClass('btn-primary');
+	return false;
 };
 
 /**
@@ -55,7 +72,7 @@ mapDesigner.loadAllTerritories = function() {
 
 mapDesigner.initModifyInteraction = function() {
 
-	var modify = new ol.interaction.Modify({
+	mapDesigner.modifyInteraction = new ol.interaction.Modify({
         features: mapDesigner.features,
         // the SHIFT key must be pressed to delete vertices, so
         // that new vertices can be drawn at the same position
@@ -66,7 +83,8 @@ mapDesigner.initModifyInteraction = function() {
         }
       });
 
-      mapDesigner.map.addInteraction(modify);
+      mapDesigner.map.addInteraction(mapDesigner.modifyInteraction);
+      mapDesigner.modifyInteraction.setActive(false);
 };
 
 /**
