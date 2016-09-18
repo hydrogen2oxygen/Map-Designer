@@ -2,6 +2,8 @@
  * Copyright by Pietro Lusso 2016 - MIT LICENSE (see github: https://github.com/hydrogen2oxygen/Map-Designer/blob/master/LICENSE)
  */
 var mapDesigner = {};
+var mapStyle = {};
+var mapGeoUtils = {};
 
 mapDesigner.mapDivId = 'map';
 
@@ -15,6 +17,12 @@ mapDesigner.initEvents = function() {
 };
 
 mapDesigner.initToolbar = function() {
+    
+    mapDesigner.addButtonToToolbar('setHomeButton', 'Set home of the map', 'primary','home', function() {
+
+        console.log('Home: ' + mapDesigner.map.getView().getCenter());
+        console.log('Home: ' + mapDesigner.map.getView().getZoom());
+    });
 
 	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
 
@@ -106,8 +114,8 @@ mapDesigner.initDrawInteraction = function() {
 mapDesigner.initMap = function() {
 
 	mapDesigner.view = new ol.View({
-		center : ol.proj.transform([ 9.41, 48.82 ], 'EPSG:4326','EPSG:3857'),
-		zoom : 12
+		center : [1023331.1189745606,6221767.552882004],
+		zoom : 14
 	});
 
 	mapDesigner.fullScreenControl = new ol.control.FullScreen({	source : 'fullscreen' });
@@ -115,7 +123,10 @@ mapDesigner.initMap = function() {
 	// Territory Layer
 	mapDesigner.features = new ol.Collection();
 	mapDesigner.sourceTerritory = new ol.source.Vector({ features: mapDesigner.features });
-	mapDesigner.layerTerritory = new ol.layer.Vector({ source: mapDesigner.sourceTerritory });
+	mapDesigner.layerTerritory = new ol.layer.Vector({ 
+	    source: mapDesigner.sourceTerritory,
+	    style : mapDesigner.createPolygonStyleFunction()
+	});
 	mapDesigner.formatWKT = new ol.format.WKT();
 
 	// OpenStreetMaps Layer
@@ -221,6 +232,127 @@ mapDesigner.prepareForFullScreen = function(fullscreen) {
 	}
 };
 
+/**
+ * Text
+ */
+mapStyle.textProperties = {
+    polygons : {
+        text : 'normal',
+        align : 'center',
+        baseline : 'middle',
+        rotation : 0,
+        font : 'Verdana',
+        weight : 'bold',
+        size : '11px',
+        offsetX : 0,
+        offsetY : 0,
+        color : 'black',
+        outline : 'yellow',
+        outlineWidth : 3,
+        maxreso : 17
+    }
+};
+
+/**
+ * Callback function retrieves the text attribute of the feature
+ */
+mapStyle.getText = function(feature, resolution, dom) {
+    var type = dom.text.value;
+    var maxResolution = dom.maxreso;
+
+    var text = feature.name;
+
+    if (resolution > maxResolution) {
+        text = '';
+    }
+
+    else if (type == 'hide') {
+        text = '';
+    } else if (type == 'shorten') {
+        text = text.trunc(12);
+    } else if (type == 'wrap') {
+        text = stringDivider(text, 16, '\n');
+    }
+
+    return text;
+};
+
+/**
+ * Create the text style according to the "dom" properties
+ */
+mapStyle.createTextStyle = function(feature, resolution, dom) {
+    var align = dom.align;
+    var baseline = dom.baseline;
+    var size = dom.size;
+    var offsetX = parseInt(dom.offsetX, 10);
+    var offsetY = parseInt(dom.offsetY, 10);
+    var weight = dom.weight;
+    var rotation = parseFloat(dom.rotation);
+    var font = weight + ' ' + size + ' ' + dom.font;
+    var fillColor = dom.color;
+    var outlineColor = dom.outline;
+    var outlineWidth = parseInt(dom.outlineWidth, 10);
+
+    return new ol.style.Text({
+        textAlign : align,
+        textBaseline : baseline,
+        font : font,
+        text : mapStyle.getText(feature, resolution, dom),
+        fill : new ol.style.Fill({
+            color : fillColor
+        }),
+        stroke : new ol.style.Stroke({
+            color : outlineColor,
+            width : outlineWidth
+        }),
+        offsetX : offsetX,
+        offsetY : offsetY,
+        rotation : rotation
+    });
+};
+
+mapStyle.fillColor = 'rgba(105, 155, 105, 0.2)';
+mapStyle.strokeColor = 'rgba(0, 155, 0, 0.8)';
+
+mapDesigner.createPolygonStyleFunction = function() {
+    return function(feature, resolution) {
+        var style = new ol.style.Style({
+            stroke : new ol.style.Stroke({
+                color : mapStyle.strokeColor,
+                width : 2
+            }),
+            fill : new ol.style.Fill({
+                color : mapStyle.fillColor
+            }),
+            text : mapStyle.createTextStyle(feature, resolution, mapStyle.textProperties.polygons)
+        });
+        return [ style ];
+    };
+};
+
+mapGeoUtils.transformCoordinatePoint = function(wtkPoint, projectionSource, projectionTarget) {
+    
+    return ol.proj.transform(mapGeoUtils.getCoordinatesFromString(wtkPoint)[0], projectionSource, projectionTarget);
+};
+
+/**
+ * Returns a float array from a coordinateString
+ */
+mapGeoUtils.getCoordinatesFromString = function(coordinatesString) {
+    var coords = coordinatesString.split(",")
+    var temp = coords.slice();
+    var arr = [];
+
+    while (temp.length) {
+        var innerArray = [ parseFloat(temp[0]) , parseFloat(temp[1]) ];
+        arr.push(innerArray);
+        temp.splice(0,2);
+    }
+
+    return arr;
+};
+
 $(document).ready(function() {
+    //console.log(mapGeoUtils.transformCoordinatePoint('9.41, 48.82','EPSG:4326','EPSG:3857'));
 	mapDesigner.init();
 });
