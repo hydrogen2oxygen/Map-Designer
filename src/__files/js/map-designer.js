@@ -57,16 +57,18 @@ mapDesigner.addButtonToToolbar = function(id,title,buttonClass,glyphicon,clickEv
 	var button = '<button id="ID" title="TITLE" class="btn btn-lg btn-toolbar btn-BUTTONCLASS"><span class="glyphicon glyphicon-GLYPHICON" aria-hidden="true"></span></button>';
 	button = button.replace('ID',id).replace('TITLE',title).replace('BUTTONCLASS',buttonClass).replace('GLYPHICON',glyphicon);
 	$('#toolbar').append( button );
-	$('#toolbar').click(clickEvent);
+	$('#' + id).click(clickEvent);
 };
 
 /**
  * Configuration: you can override this uppercase variables for your website
  */
-mapDesigner.FULLSCREEN_ID = '#fullscreen';
-mapDesigner.DYNAMIC_SIDEPANEL_ID = '#mapDynamicSidePanel';
-mapDesigner.DYNAMIC_SIDEPANEL_FULLSCREEN_HTML = 'mapSidePanelFullscreenMode.html';
-mapDesigner.DYNAMIC_SIDEPANEL_COMPACT_HTML = 'mapSidePanelCompactMode.html';
+mapConfig = {
+    FULLSCREEN_ID : '#fullscreen',
+    DYNAMIC_SIDEPANEL_ID : '#mapDynamicSidePanel',
+    DYNAMIC_SIDEPANEL_FULLSCREEN_HTML : 'mapSidePanelFullscreenMode.html',
+    DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html'
+};
 
 /**
  * Load all territories
@@ -160,6 +162,7 @@ mapDesigner.addTerritory = function(territory) {
 	// add additional information
 	feature.number = territory.number;
 	feature.city = territory.city;
+	feature.name = feature.number + " " + feature.city;
 	feature.contacts = territory.contacts;
 
 	mapDesigner.sourceTerritory.addFeature( feature );
@@ -177,10 +180,10 @@ mapDesigner.init = function() {
 };
 
 mapDesigner.initWindowsResize = function() {
-	mapDesigner.compactWidth = $( mapDesigner.FULLSCREEN_ID ).width();
+	mapDesigner.compactWidth = $( mapConfig.FULLSCREEN_ID ).width();
 
 	$( window ).resize(function() {
-		  if ($( mapDesigner.FULLSCREEN_ID ).width() > mapDesigner.compactWidth) {
+		  if ($( mapConfig.FULLSCREEN_ID ).width() > mapDesigner.compactWidth) {
 			  mapDesigner.prepareForFullScreen(true);
 		  } else {
 			  mapDesigner.prepareForFullScreen(false);
@@ -194,13 +197,13 @@ mapDesigner.initWindowsResize = function() {
 mapDesigner.switchFullScreenSidePanel = function(fullscreen) {
 
 	if (fullscreen) {
-		$.get( mapDesigner.DYNAMIC_SIDEPANEL_FULLSCREEN_HTML, function( data ) {
-			$(mapDesigner.DYNAMIC_SIDEPANEL_ID).html(data);
+		$.get( mapConfig.DYNAMIC_SIDEPANEL_FULLSCREEN_HTML, function( data ) {
+			$(mapConfig.DYNAMIC_SIDEPANEL_ID).html(data);
 			mapDesigner.initToolbar();
 		});
 	} else {
-		$.get( mapDesigner.DYNAMIC_SIDEPANEL_COMPACT_HTML, function( data ) {
-			$(mapDesigner.DYNAMIC_SIDEPANEL_ID).html(data);
+		$.get( mapConfig.DYNAMIC_SIDEPANEL_COMPACT_HTML, function( data ) {
+			$(mapConfig.DYNAMIC_SIDEPANEL_ID).html(data);
 		});
 	}
 };
@@ -311,8 +314,8 @@ mapStyle.createTextStyle = function(feature, resolution, dom) {
     });
 };
 
-mapStyle.fillColor = 'rgba(105, 155, 105, 0.2)';
-mapStyle.strokeColor = 'rgba(0, 155, 0, 0.8)';
+mapStyle.fillColor = 'rgba(105, 155, 105, 0.1)';
+mapStyle.strokeColor = 'rgba(155, 0, 0, 0.8)';
 
 mapDesigner.createPolygonStyleFunction = function() {
     return function(feature, resolution) {
