@@ -17,11 +17,16 @@ mapDesigner.initEvents = function() {
 };
 
 mapDesigner.initToolbar = function() {
-    
+
     mapDesigner.addButtonToToolbar('setHomeButton', 'Set home of the map', 'primary','home', function() {
 
         console.log('Home: ' + mapDesigner.map.getView().getCenter());
         console.log('Home: ' + mapDesigner.map.getView().getZoom());
+    });
+
+    mapDesigner.addButtonToToolbar('saveButton', 'Save maps', 'primary','floppy-save', function() {
+
+        mapDesigner.saveAllTerritories();
     });
 
 	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
@@ -67,18 +72,32 @@ mapConfig = {
     FULLSCREEN_ID : '#fullscreen',
     DYNAMIC_SIDEPANEL_ID : '#mapDynamicSidePanel',
     DYNAMIC_SIDEPANEL_FULLSCREEN_HTML : 'mapSidePanelFullscreenMode.html',
-    DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html'
+    DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html',
+    LOAD_ALL_TERRITORIES_REST : "testdata/data.json"
 };
 
 /**
  * Load all territories
  */
 mapDesigner.loadAllTerritories = function() {
-	$.getJSON("testdata/data.json", function(data) {
+	$.getJSON(mapConfig.LOAD_ALL_TERRITORIES_REST, function(data) {
 
 		$.each( data.data, function( key, territory ) {
 			mapDesigner.addTerritory(territory);
 		});
+	});
+};
+
+/**
+ * Save all territories
+ */
+mapDesigner.saveAllTerritories = function() {
+
+	var format = new ol.format.WKT();
+
+	mapDesigner.features.forEach(function (feature) {
+		var wkt = format.writeGeometry(feature.getGeometry());
+		console.log(feature.name + " " + wkt);
 	});
 };
 
@@ -125,7 +144,7 @@ mapDesigner.initMap = function() {
 	// Territory Layer
 	mapDesigner.features = new ol.Collection();
 	mapDesigner.sourceTerritory = new ol.source.Vector({ features: mapDesigner.features });
-	mapDesigner.layerTerritory = new ol.layer.Vector({ 
+	mapDesigner.layerTerritory = new ol.layer.Vector({
 	    source: mapDesigner.sourceTerritory,
 	    style : mapDesigner.createPolygonStyleFunction()
 	});
@@ -334,7 +353,7 @@ mapDesigner.createPolygonStyleFunction = function() {
 };
 
 mapGeoUtils.transformCoordinatePoint = function(wtkPoint, projectionSource, projectionTarget) {
-    
+
     return ol.proj.transform(mapGeoUtils.getCoordinatesFromString(wtkPoint)[0], projectionSource, projectionTarget);
 };
 
