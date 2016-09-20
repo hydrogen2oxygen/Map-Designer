@@ -73,18 +73,26 @@ mapConfig = {
     DYNAMIC_SIDEPANEL_ID : '#mapDynamicSidePanel',
     DYNAMIC_SIDEPANEL_FULLSCREEN_HTML : 'mapSidePanelFullscreenMode.html',
     DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html',
-    LOAD_ALL_TERRITORIES_REST : "testdata/data.json"
+    LOAD_ALL_TERRITORIES_REST : "testdata/data.json",
+    SAVE_ALL_TERRITORIES_REST : "saveMaps"
 };
 
 /**
  * Load all territories
  */
 mapDesigner.loadAllTerritories = function() {
+
+	mapDesigner.sourceTerritory.clear();
+
 	$.getJSON(mapConfig.LOAD_ALL_TERRITORIES_REST, function(data) {
 
-		$.each( data.data, function( key, territory ) {
-			mapDesigner.addTerritory(territory);
-		});
+		mapDesigner.addTerritoriesToLayer(data);
+	});
+};
+
+mapDesigner.addTerritoriesToLayer = function(data) {
+	$.each( data.data, function( key, territory ) {
+		mapDesigner.addTerritory(territory);
 	});
 };
 
@@ -94,11 +102,41 @@ mapDesigner.loadAllTerritories = function() {
 mapDesigner.saveAllTerritories = function() {
 
 	var format = new ol.format.WKT();
+	var data = { data: []};
 
 	mapDesigner.features.forEach(function (feature) {
+
 		var wkt = format.writeGeometry(feature.getGeometry());
-		console.log(feature.name + " " + wkt);
+		var territory = { number : feature.number, polygon : wkt };
+		data.data.push(territory);
 	});
+
+	var dataJson = JSON.stringify(data);
+
+	jQuery.ajax({
+    	type: "POST",
+        url: mapConfig.SAVE_ALL_TERRITORIES_REST,
+        data: dataJson,
+        contentType: "application/json; charset=utf-8",
+        success: mapDesigner.saveAllTerritoriesSuccessCallback,
+        processData:false,
+        cache: false,
+        async: true
+    });
+};
+
+/**
+ * Override this function if you need a different behavior after successful saving all maps
+ */
+mapDesigner.saveAllTerritoriesSuccessCallback = function(data) {
+
+	// Imagine that you make some corrections on the server for overlaping maps and then reload the data here
+	console.log(data);
+	// this is really fast
+	mapDesigner.loadAllTerritories();
+
+	// it could be even faster
+	// mapDesigner.addTerritoriesToLayer(data);
 };
 
 mapDesigner.initModifyInteraction = function() {
