@@ -185,8 +185,13 @@ mapDesigner.loadAllTerritories = function() {
 };
 
 mapDesigner.addTerritoriesToLayer = function(data) {
+
 	$.each( data.data, function( key, territory ) {
 		mapDesigner.addTerritory(territory);
+	});
+
+	$.each( data.extraMaps, function( key, extraMap ) {
+		mapDesigner.addAdditionalMap(extraMap);
 	});
 };
 
@@ -196,13 +201,20 @@ mapDesigner.addTerritoriesToLayer = function(data) {
 mapDesigner.saveAllTerritories = function() {
 
 	var format = new ol.format.WKT();
-	var data = { data: []};
+	var data = { data: [], extraMaps: []};
 
 	mapDesigner.features.forEach(function (feature) {
 
 		var wkt = format.writeGeometry(feature.getGeometry());
 		var territory = { number : feature.number, polygon : wkt };
 		data.data.push(territory);
+	});
+
+	mapDesigner.notesFeatures.forEach(function (feature) {
+
+		var wkt = format.writeGeometry(feature.getGeometry());
+		var additionalMap = { name : feature.name, polygon : wkt };
+		data.extraMaps.push(additionalMap);
 	});
 
 	var dataJson = JSON.stringify(data);
@@ -352,6 +364,25 @@ mapDesigner.addTerritory = function(territory) {
 	feature.contacts = territory.contacts;
 
 	mapDesigner.sourceTerritory.addFeature( feature );
+};
+
+mapDesigner.addAdditionalMap = function(extraMap) {
+
+	if (extraMap.polygon == null) {
+		console.log(extraMap.name + ' has no polygon');
+		return;
+	}
+
+	// no projection transformation is needed here, because the we store it in
+	// the same as openlayers provides
+	var feature = mapDesigner.formatWKT.readFeature(extraMap.polygon);
+
+	// add additional information
+	feature.name = extraMap.name;
+
+	console.log(feature);
+
+	mapDesigner.notesSourceTerritory.addFeature( feature );
 };
 
 mapDesigner.init = function() {
