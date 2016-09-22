@@ -1,0 +1,14 @@
+{
+    "request": {
+        "method": "POST",
+        "url": "/saveHomeCoordinates"
+    },
+    "response": {
+        "status": 200,
+        "headers": {
+            "Content-Type": "text/plain",
+            "Cache-Control": "application/json"
+        },
+        "body": "{\"result\":\"ok\"}"
+    }
+}

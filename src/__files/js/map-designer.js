@@ -6,6 +6,8 @@ var mapStyle = {};
 var mapGeoUtils = {};
 
 mapDesigner.mapDivId = 'map';
+mapDesigner.territoriesWithoutPolygon = [];
+mapDesigner.selectedFeature = null;
 
 /**
  * Override this method for your own event handling
@@ -18,13 +20,17 @@ mapDesigner.initEvents = function() {
 
 mapDesigner.initToolbar = function() {
 
-    mapDesigner.addButtonToToolbar('setHomeButton', 'Set home of the map', 'primary','home', function() {
+	mapDesigner.addButtonToToolbar('toggleSidePanelButton', 'Hide this side panel', 'primary','th', function() {
 
-        console.log('Home: ' + mapDesigner.map.getView().getCenter());
-        console.log('Home: ' + mapDesigner.map.getView().getZoom());
+		mapDesigner.toggleSidePanel();
     });
 
-    mapDesigner.addButtonToToolbar('saveButton', 'Save maps', 'primary','floppy-save', function() {
+    mapDesigner.addButtonToToolbar('setHomeButton', 'Set home of the map', 'primary','screenshot', function() {
+
+        mapDesigner.setHomeCoordinatesSave(mapDesigner.map.getView().getCenter(), mapDesigner.map.getView().getZoom());
+    });
+
+    mapDesigner.addButtonToToolbar('saveButton', 'Save maps', 'success','floppy-save', function() {
 
         mapDesigner.saveAllTerritories();
     });
@@ -32,9 +38,70 @@ mapDesigner.initToolbar = function() {
 	mapDesigner.addButtonToToolbar('drawTerritoryButton', 'Draw territory', 'primary','pencil', function() {
 
 	    var activateInteractions = mapDesigner.toggleButton('drawTerritoryButton');
-		mapDesigner.modifyInteraction.setActive(activateInteractions);
 		mapDesigner.drawInteraction.setActive(activateInteractions);
+
+		if (activateInteractions && mapDesigner.modifyInteraction.getActive()) {
+			var editMode = mapDesigner.toggleButton('editTerritoryButton');
+			mapDesigner.modifyInteraction.setActive(editMode);
+			mapDesigner.modifyInteractionNotes.setActive(editMode);
+		}
 	});
+
+	mapDesigner.addButtonToToolbar('editTerritoryButton', 'Modify territory', 'primary','edit', function() {
+
+	    var activateInteractions = mapDesigner.toggleButton('editTerritoryButton');
+		mapDesigner.modifyInteraction.setActive(activateInteractions);
+		mapDesigner.modifyInteractionNotes.setActive(activateInteractions);
+
+		if (activateInteractions && mapDesigner.drawInteraction.getActive()) {
+			mapDesigner.drawInteraction.setActive(mapDesigner.toggleButton('drawTerritoryButton'));
+		}
+	});
+
+
+	$.each(mapDesigner.territoriesWithoutPolygon, function(key, territory) {
+		$('#territoriesWithoutPolygonSelection')
+			.append($("<option></option>")
+		    .attr("value",territory.number)
+		    .text(territory.number));
+	});
+
+	$('#assignSelectedMapToTerritoryButton').click(function(){
+
+		if (mapDesigner.selectedFeature == null) {
+			alert('No map was selected!');
+			return;
+		}
+
+		var selectedTerritoryNumber = $('#territoriesWithoutPolygonSelection').val();
+
+		if (selectedTerritoryNumber == null) {
+			alert('No territory was selected!');
+			return;
+		}
+
+		$.each(mapDesigner.territoriesWithoutPolygon, function(key, territory) {
+			if (selectedTerritoryNumber == territory.number) {
+				var wkt = mapDesigner.formatWKT.writeGeometry(mapDesigner.selectedFeature.getGeometry());
+				territory.polygon = wkt;
+				mapDesigner.addTerritory(territory);
+				$("#territoriesWithoutPolygonSelection option[value='" + territory.number + "']").remove();
+			}
+		});
+
+	});
+
+	$('#setNameForMapButton').click(function(){
+
+		if (mapDesigner.selectedFeature == null) {
+			alert('No map was selected!');
+			return;
+		}
+
+		var name = $('#nameOfNoteMap').val();
+		mapDesigner.selectedFeature.name = name;
+	});
+
 };
 
 /**
@@ -65,8 +132,34 @@ mapDesigner.addButtonToToolbar = function(id,title,buttonClass,glyphicon,clickEv
 	$('#' + id).click(clickEvent);
 };
 
+mapDesigner.setHomeCoordinatesSave = function(center, zoom) {
+
+    var data = { coordinates: center, zoomLevel: zoom };
+    var dataJson = JSON.stringify(data);
+
+    console.log(dataJson);
+
+    jQuery.ajax({
+    	type: "POST",
+        url: mapConfig.SAVE_HOME_COORDINATES_REST,
+        data: dataJson,
+        contentType: "application/json; charset=utf-8",
+        success: mapDesigner.setHomeCoordinatesSaveCallback,
+        processData:false,
+        cache: false,
+        async: true
+    });
+};
+
 /**
- * Configuration: you can override this uppercase variables for your website
+ * Callback function called after saving the new Home coordinates
+ */
+mapDesigner.setHomeCoordinatesSaveCallback = function(result) {
+	console.log(result);
+};
+
+/**
+ * Configuration: you can override them for your application
  */
 mapConfig = {
     FULLSCREEN_ID : '#fullscreen',
@@ -74,7 +167,8 @@ mapConfig = {
     DYNAMIC_SIDEPANEL_FULLSCREEN_HTML : 'mapSidePanelFullscreenMode.html',
     DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html',
     LOAD_ALL_TERRITORIES_REST : "testdata/data.json",
-    SAVE_ALL_TERRITORIES_REST : "saveMaps"
+    SAVE_ALL_TERRITORIES_REST : "saveMaps",
+    SAVE_HOME_COORDINATES_REST : "saveHomeCoordinates"
 };
 
 /**
@@ -150,16 +244,27 @@ mapDesigner.initModifyInteraction = function() {
           return ol.events.condition.shiftKeyOnly(event) &&
               ol.events.condition.singleClick(event);
         }
-      });
+    });
 
-      mapDesigner.map.addInteraction(mapDesigner.modifyInteraction);
-      mapDesigner.modifyInteraction.setActive(false);
+	mapDesigner.modifyInteractionNotes = new ol.interaction.Modify({
+        features: mapDesigner.notesFeatures,
+        deleteCondition: function(event) {
+          return ol.events.condition.shiftKeyOnly(event) &&
+              ol.events.condition.singleClick(event);
+        }
+    });
+
+    mapDesigner.map.addInteraction(mapDesigner.modifyInteraction);
+    mapDesigner.modifyInteraction.setActive(false);
+
+    mapDesigner.map.addInteraction(mapDesigner.modifyInteractionNotes);
+    mapDesigner.modifyInteractionNotes.setActive(false);
 };
 
 mapDesigner.initDrawInteraction = function() {
 
     mapDesigner.drawInteraction = new ol.interaction.Draw({
-        features: mapDesigner.features,
+        features: mapDesigner.notesFeatures,
         type: 'Polygon'
       });
 
@@ -186,6 +291,15 @@ mapDesigner.initMap = function() {
 	    source: mapDesigner.sourceTerritory,
 	    style : mapDesigner.createPolygonStyleFunction()
 	});
+
+	// Notes Layer
+	mapDesigner.notesFeatures = new ol.Collection();
+	mapDesigner.notesSourceTerritory = new ol.source.Vector({ features: mapDesigner.notesFeatures });
+	mapDesigner.layerNotes = new ol.layer.Vector({
+	    source: mapDesigner.notesSourceTerritory,
+	    style : mapDesigner.createPolygonStyleFunctionNotes()
+	});
+
 	mapDesigner.formatWKT = new ol.format.WKT();
 
 	// OpenStreetMaps Layer
@@ -196,19 +310,34 @@ mapDesigner.initMap = function() {
 		controls : ol.control.defaults().extend([ mapDesigner.fullScreenControl ]),
 		layers : [
 		           mapDesigner.layerOSM,
-		           mapDesigner.layerTerritory
+		           mapDesigner.layerTerritory,
+		           mapDesigner.layerNotes
 		         ],
 		target : mapDesigner.mapDivId,
 		view : mapDesigner.view
 	});
 
 	mapDesigner.switchFullScreenSidePanel(false);
+
+	mapDesigner.select_interaction = new ol.interaction.Select();
+
+	mapDesigner.select_interaction.getFeatures().on("add", function (e) {
+	     var feature = e.element;
+	     mapDesigner.selectedFeature = feature;
+	});
+
+	mapDesigner.select_interaction.getFeatures().on('remove', function(event) {
+	      mapDesigner.selectedFeature = null;
+	});
+
+	mapDesigner.map.addInteraction(mapDesigner.select_interaction);
 };
 
 mapDesigner.addTerritory = function(territory) {
 
 	if (territory.polygon == null) {
 		console.log(territory.number + ' has no polygon');
+		mapDesigner.territoriesWithoutPolygon.push(territory);
 		return;
 	}
 
@@ -383,6 +512,25 @@ mapDesigner.createPolygonStyleFunction = function() {
             }),
             fill : new ol.style.Fill({
                 color : mapStyle.fillColor
+            }),
+            text : mapStyle.createTextStyle(feature, resolution, mapStyle.textProperties.polygons)
+        });
+        return [ style ];
+    };
+};
+
+mapStyle.fillColorNotes = 'rgba(105, 155, 105, 0.1)';
+mapStyle.strokeColorNotes = 'rgba(255, 125, 0, 0.8)';
+
+mapDesigner.createPolygonStyleFunctionNotes = function() {
+    return function(feature, resolution) {
+        var style = new ol.style.Style({
+            stroke : new ol.style.Stroke({
+                color : mapStyle.strokeColorNotes,
+                width : 2
+            }),
+            fill : new ol.style.Fill({
+                color : mapStyle.fillColorNotes
             }),
             text : mapStyle.createTextStyle(feature, resolution, mapStyle.textProperties.polygons)
         });

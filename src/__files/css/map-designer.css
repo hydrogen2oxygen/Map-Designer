@@ -38,10 +38,23 @@
  float: right;
 }
 
+.map-expanded {
+ width: 100%;
+ height: 100%;
+ float: right;
+}
+
 .sidepanel {
  background: #292929;
  width: 15%;
  height: 100%;
+ float: left;
+}
+
+.sidepanel-collapsed {
+ background: #292929;
+ width: 0px;
+ height: 0px;
  float: left;
 }
 
@@ -56,4 +69,21 @@
 .btn-toolbar {
  margin-bottom: 5px;
  margin-left: 5px;
+}
+
+.topMargin {
+ margin-top: 5px;
+}
+
+.marginsEverywhere {
+ margin: 5px;
+ padding: 5px;
+}
+
+.white {
+ color: white;
+}
+
+.darkGrey {
+ background: #544b5a;
 }
