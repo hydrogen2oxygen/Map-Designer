@@ -57,7 +57,30 @@ mapDesigner.initToolbar = function() {
 			mapDesigner.drawInteraction.setActive(mapDesigner.toggleButton('drawTerritoryButton'));
 		}
 	});
+	
+	mapDesigner.addButtonToToolbar('adjustTerritoryButton', 'Adjust territory by cutting it automatically', 'primary','wrench', function() {
 
+        mapDesigner.adjustTerritoryMap();
+    });
+	
+	mapDesigner.addButtonToToolbar('deleteMapButton', 'Delete map', 'danger','trash', function() {
+
+	    if (mapDesigner.selectedFeature == null) return;
+	    
+	    if (mapDesigner.selectedFeature.number != null) {
+	        
+	        $('#territoriesWithoutPolygonSelection')
+                .append($("<option></option>")
+                .attr("value",mapDesigner.selectedFeature.number)
+                .text(mapDesigner.selectedFeature.number));
+	        
+	        mapDesigner.sourceTerritory.removeFeature(mapDesigner.selectedFeature);
+	    } else {
+	        mapDesigner.notesSourceTerritory.removeFeature(mapDesigner.selectedFeature);
+	    }
+	    
+	    mapDesigner.repaintMap();
+    });
 
 	$.each(mapDesigner.territoriesWithoutPolygon, function(key, territory) {
 		$('#territoriesWithoutPolygonSelection')
@@ -86,6 +109,8 @@ mapDesigner.initToolbar = function() {
 				territory.polygon = wkt;
 				mapDesigner.addTerritory(territory);
 				$("#territoriesWithoutPolygonSelection option[value='" + territory.number + "']").remove();
+				mapDesigner.notesSourceTerritory.removeFeature(mapDesigner.selectedFeature);
+				mapDesigner.repaintMap();
 			}
 		});
 
@@ -100,8 +125,15 @@ mapDesigner.initToolbar = function() {
 
 		var name = $('#nameOfNoteMap').val();
 		mapDesigner.selectedFeature.name = name;
+		mapDesigner.repaintMap();
 	});
 
+};
+
+mapDesigner.repaintMap = function() {
+    mapDesigner.select_interaction.getFeatures().clear();
+    mapDesigner.selectedFeature = null;
+    mapDesigner.map.updateSize();
 };
 
 /**
@@ -168,7 +200,8 @@ mapConfig = {
     DYNAMIC_SIDEPANEL_COMPACT_HTML : 'mapSidePanelCompactMode.html',
     LOAD_ALL_TERRITORIES_REST : "testdata/data.json",
     SAVE_ALL_TERRITORIES_REST : "saveMaps",
-    SAVE_HOME_COORDINATES_REST : "saveHomeCoordinates"
+    SAVE_HOME_COORDINATES_REST : "saveHomeCoordinates",
+    ADJUST_TERRITORY_MAP_REST : "adjustTerritoryMap"
 };
 
 /**
@@ -176,6 +209,7 @@ mapConfig = {
  */
 mapDesigner.loadAllTerritories = function() {
 
+    mapDesigner.repaintMap();
 	mapDesigner.sourceTerritory.clear();
 
 	$.getJSON(mapConfig.LOAD_ALL_TERRITORIES_REST, function(data) {
@@ -200,19 +234,18 @@ mapDesigner.addTerritoriesToLayer = function(data) {
  */
 mapDesigner.saveAllTerritories = function() {
 
-	var format = new ol.format.WKT();
 	var data = { data: [], extraMaps: []};
 
 	mapDesigner.features.forEach(function (feature) {
 
-		var wkt = format.writeGeometry(feature.getGeometry());
+		var wkt = mapDesigner.formatWKT.writeGeometry(feature.getGeometry());
 		var territory = { number : feature.number, polygon : wkt };
 		data.data.push(territory);
 	});
 
 	mapDesigner.notesFeatures.forEach(function (feature) {
 
-		var wkt = format.writeGeometry(feature.getGeometry());
+		var wkt = mapDesigner.formatWKT.writeGeometry(feature.getGeometry());
 		var additionalMap = { name : feature.name, polygon : wkt };
 		data.extraMaps.push(additionalMap);
 	});
@@ -243,6 +276,38 @@ mapDesigner.saveAllTerritoriesSuccessCallback = function(data) {
 
 	// it could be even faster
 	// mapDesigner.addTerritoriesToLayer(data);
+};
+
+/**
+ * This shall be a really useful tool which adjust a territory map by cutting
+ * the intersections from other surrounding maps
+ */
+mapDesigner.adjustTerritoryMap = function() {
+    
+    if (mapDesigner.selectedFeature == null) {
+        alert('No territory map selected!');
+        return;
+    }
+    
+    if (mapDesigner.selectedFeature.number == null) {
+        alert('No territory map selected! (this actually is a additional map)');
+        return;
+    }
+    
+    var wkt = mapDesigner.formatWKT.writeGeometry(mapDesigner.selectedFeature.getGeometry());
+    var territoryMap = { number: mapDesigner.selectedFeature.number, polygon: wkt};
+    var dataJson = JSON.stringify(territoryMap);
+
+    jQuery.ajax({
+        type: "POST",
+        url: mapConfig.ADJUST_TERRITORY_MAP_REST,
+        data: dataJson,
+        contentType: "application/json; charset=utf-8",
+        success: mapDesigner.loadAllTerritories(),
+        processData:false,
+        cache: false,
+        async: true
+    });
 };
 
 mapDesigner.initModifyInteraction = function() {
