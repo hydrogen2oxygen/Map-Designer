@@ -57,28 +57,28 @@ mapDesigner.initToolbar = function() {
 			mapDesigner.drawInteraction.setActive(mapDesigner.toggleButton('drawTerritoryButton'));
 		}
 	});
-	
+
 	mapDesigner.addButtonToToolbar('adjustTerritoryButton', 'Adjust territory by cutting it automatically', 'primary','wrench', function() {
 
         mapDesigner.adjustTerritoryMap();
     });
-	
+
 	mapDesigner.addButtonToToolbar('deleteMapButton', 'Delete map', 'danger','trash', function() {
 
 	    if (mapDesigner.selectedFeature == null) return;
-	    
+
 	    if (mapDesigner.selectedFeature.number != null) {
-	        
+
 	        $('#territoriesWithoutPolygonSelection')
                 .append($("<option></option>")
                 .attr("value",mapDesigner.selectedFeature.number)
                 .text(mapDesigner.selectedFeature.number));
-	        
+
 	        mapDesigner.sourceTerritory.removeFeature(mapDesigner.selectedFeature);
 	    } else {
 	        mapDesigner.notesSourceTerritory.removeFeature(mapDesigner.selectedFeature);
 	    }
-	    
+
 	    mapDesigner.repaintMap();
     });
 
@@ -201,7 +201,8 @@ mapConfig = {
     LOAD_ALL_TERRITORIES_REST : "testdata/data.json",
     SAVE_ALL_TERRITORIES_REST : "saveMaps",
     SAVE_HOME_COORDINATES_REST : "saveHomeCoordinates",
-    ADJUST_TERRITORY_MAP_REST : "adjustTerritoryMap"
+    ADJUST_TERRITORY_MAP_REST : "adjustTerritoryMap",
+    GET_INFO_OF_MAP_REST : "mapInfo/"
 };
 
 /**
@@ -283,17 +284,17 @@ mapDesigner.saveAllTerritoriesSuccessCallback = function(data) {
  * the intersections from other surrounding maps
  */
 mapDesigner.adjustTerritoryMap = function() {
-    
+
     if (mapDesigner.selectedFeature == null) {
         alert('No territory map selected!');
         return;
     }
-    
+
     if (mapDesigner.selectedFeature.number == null) {
         alert('No territory map selected! (this actually is a additional map)');
         return;
     }
-    
+
     var wkt = mapDesigner.formatWKT.writeGeometry(mapDesigner.selectedFeature.getGeometry());
     var territoryMap = { number: mapDesigner.selectedFeature.number, polygon: wkt};
     var dataJson = JSON.stringify(territoryMap);
@@ -401,13 +402,39 @@ mapDesigner.initMap = function() {
 	mapDesigner.select_interaction.getFeatures().on("add", function (e) {
 	     var feature = e.element;
 	     mapDesigner.selectedFeature = feature;
+	     mapDesigner.selectFeatureCallback();
 	});
 
 	mapDesigner.select_interaction.getFeatures().on('remove', function(event) {
+
 	      mapDesigner.selectedFeature = null;
+	      mapDesigner.selectFeatureCallback();
 	});
 
 	mapDesigner.map.addInteraction(mapDesigner.select_interaction);
+};
+
+mapDesigner.selectFeatureCallback = function() {
+
+	if (mapDesigner.selectedFeature == null) {
+		$('#mapInfo').html('');
+		return;
+	}
+
+	if (mapDesigner.selectedFeature.number != null) {
+
+		$.getJSON(mapConfig.GET_INFO_OF_MAP_REST + mapDesigner.selectedFeature.number, function(data) {
+
+			$('#mapInfo').html(data.info);
+		});
+
+	} else if (mapDesigner.selectedFeature.name != null) {
+
+		$.getJSON(mapConfig.GET_INFO_OF_MAP_REST + escape(mapDesigner.selectedFeature.name), function(data) {
+
+			$('#mapInfo').html(data.info);
+		});
+	}
 };
 
 mapDesigner.addTerritory = function(territory) {

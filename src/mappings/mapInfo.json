@@ -1,0 +1,14 @@
+{
+    "request": {
+        "method": "GET",
+        "urlPathPattern": "/mapInfo/([0-9]*)"
+    },
+    "response": {
+        "status": 200,
+        "headers": {
+            "Content-Type": "text/plain",
+            "Cache-Control": "application/json"
+        },
+        "body": "{\"info\":\"Contacts: 77<br>(TestInfo)\"}"
+    }
+}
