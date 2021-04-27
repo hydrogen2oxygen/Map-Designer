@@ -13,7 +13,7 @@
     <packaging>jar</packaging>
 
     <properties>
-        <commons.io.version>2.5</commons.io.version>
+        <commons.io.version>2.7</commons.io.version>
         <itext.version>5.5.7</itext.version>
         <junit.version>4.13.1</junit.version>
         <wiremock-standalone>2.1.12</wiremock-standalone>
